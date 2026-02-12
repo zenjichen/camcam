@@ -350,8 +350,8 @@ window.playEpisode = (embedUrl, episodeName) => {
     elements.playerModal.classList.add('active');
 
     elements.playerContainer.innerHTML = `
-    < iframe src = "${embedUrl}" allowfullscreen allow = "autoplay; encrypted-media" ></iframe >
-        `;
+        <iframe src="${embedUrl}" allowfullscreen allow="autoplay; encrypted-media"></iframe>
+    `;
 };
 
 // Search Movies
@@ -392,9 +392,9 @@ const loadFilters = async () => {
     if (genresData && Array.isArray(genresData)) {
         state.genres = genresData;
         elements.genreDropdown.innerHTML = state.genres.map(genre => `
-        < a href = "#the-loai/${genre.slug}" class="dropdown-item" >
+        <a href="#the-loai/${genre.slug}" class="dropdown-item">
             ${genre.name}
-            </a >
+        </a>
     `).join('');
     }
 
@@ -403,16 +403,16 @@ const loadFilters = async () => {
     if (countriesData && Array.isArray(countriesData)) {
         state.countries = countriesData;
         elements.countryDropdown.innerHTML = state.countries.map(country => `
-    < a href = "#quoc-gia/${country.slug}" class="dropdown-item" >
-        ${country.name}
-            </a >
+        <a href="#quoc-gia/${country.slug}" class="dropdown-item">
+            ${country.name}
+        </a>
     `).join('');
     }
 };
 
 // Load Movies by Genre
 window.loadMoviesByGenre = async (slug) => {
-    const data = await fetchAPI(`/ v1 / api / the - loai / ${slug} `, { page: 1 });
+    const data = await fetchAPI(`/v1/api/the-loai/${slug}`, { page: 1 });
 
     if (!data) {
         showError(elements.newMovies, 'Không có phim nào trong thể loại này');
@@ -440,7 +440,7 @@ window.loadMoviesByGenre = async (slug) => {
 
 // Load Movies by Country
 window.loadMoviesByCountry = async (slug) => {
-    const data = await fetchAPI(`/ v1 / api / quoc - gia / ${slug} `, { page: 1 });
+    const data = await fetchAPI(`/v1/api/quoc-gia/${slug}`, { page: 1 });
 
     if (!data) {
         showError(elements.newMovies, 'Không có phim nào từ quốc gia này');
