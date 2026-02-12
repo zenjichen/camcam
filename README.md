@@ -1,6 +1,6 @@
-# 🎬 CamCam - Xem Phim Online
+# 🎬 zMovie - Xem Phim Online
 
-Chào mừng bạn đến với **CamCam** - nền tảng xem phim online miễn phí với kho phim phong phú, chất lượng cao.
+Chào mừng bạn đến với **zMovie** - nền tảng xem phim online miễn phí với kho phim phong phú, chất lượng cao.
 
 ## ✨ Tính năng nổi bật
 

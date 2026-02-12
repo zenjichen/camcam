@@ -506,7 +506,7 @@ window.showMovieDetail = showMovieDetail;
 
 // Initialize App
 const init = async () => {
-    console.log('🎬 Initializing CamCam Movie App...');
+    console.log('🎬 Initializing zMovie App...');
 
     // Load hero movie
     await loadHeroMovie();
