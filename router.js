@@ -8,7 +8,11 @@ class Router {
             'the-loai': (slug) => this.loadGenre(slug),
             'quoc-gia': (slug) => this.loadCountry(slug),
             'tim-kiem': (query) => this.loadSearch(query),
-            'dien-vien': (name) => this.searchByActor(name)
+            'dien-vien': (name) => this.searchByActor(name),
+            'phim-moi': () => this.initFilteredPage('moi', 'phim-moi', 'Phim mới cập nhật', window.API_ENDPOINTS.home),
+            'phim-le': () => this.initFilteredPage('le', 'phim-le', 'Phim lẻ', window.API_ENDPOINTS.single),
+            'phim-bo': () => this.initFilteredPage('bo', 'phim-bo', 'Phim bộ', window.API_ENDPOINTS.series),
+            'hoat-hinh': () => this.initFilteredPage('hoathinh', 'hoat-hinh', 'Hoạt hình', window.API_ENDPOINTS.animation)
         };
 
         this.currentData = {
