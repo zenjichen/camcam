@@ -336,10 +336,10 @@ const searchMovies = async (query) => {
 
 // Load Categories and Countries
 const loadFilters = async () => {
-    // Load genres
+    // Load genres - API returns direct array
     const genresData = await fetchAPI('/the-loai');
-    if (genresData && genresData.data && genresData.data.items) {
-        state.genres = genresData.data.items;
+    if (genresData && Array.isArray(genresData)) {
+        state.genres = genresData;
         elements.genreDropdown.innerHTML = state.genres.map(genre => `
             <a href="#" class="dropdown-item" onclick="loadMoviesByGenre('${genre.slug}'); return false;">
                 ${genre.name}
@@ -347,10 +347,10 @@ const loadFilters = async () => {
         `).join('');
     }
 
-    // Load countries
+    // Load countries - API returns direct array
     const countriesData = await fetchAPI('/quoc-gia');
-    if (countriesData && countriesData.data && countriesData.data.items) {
-        state.countries = countriesData.data.items;
+    if (countriesData && Array.isArray(countriesData)) {
+        state.countries = countriesData;
         elements.countryDropdown.innerHTML = state.countries.map(country => `
             <a href="#" class="dropdown-item" onclick="loadMoviesByCountry('${country.slug}'); return false;">
                 ${country.name}
