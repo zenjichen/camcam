@@ -239,15 +239,38 @@ const showMovieDetail = async (slug) => {
     if (movie.episodes && movie.episodes.length > 0) {
         const serverData = movie.episodes[0];
         if (serverData.server_data && serverData.server_data.length > 0) {
+            const currentEps = serverData.server_data.length;
+            let totalEps = currentEps;
+
+            // Try to parse total episodes from string like "24 Tập"
+            if (movie.episode_total) {
+                const match = movie.episode_total.toString().match(/(\d+)/);
+                if (match) {
+                    const parsed = parseInt(match[1]);
+                    if (parsed > currentEps) totalEps = parsed;
+                }
+            }
+
+            const availableEpisodes = serverData.server_data.map((ep, idx) => `
+                <button class="episode-btn available" onclick="playEpisode('${ep.link_embed.replace(/'/g, "\\'")}', '${ep.name.replace(/'/g, "\\'")}', 0, ${idx})">
+                    ${ep.name}
+                </button>
+            `).join('');
+
+            let upcomingEpisodes = '';
+            // Only show upcoming if reasonable (e.g. < 200 eps to avoid spam)
+            if (totalEps > currentEps && totalEps < 1000) {
+                for (let i = currentEps + 1; i <= totalEps; i++) {
+                    upcomingEpisodes += `<button class="episode-btn upcoming" disabled>${i}</button>`;
+                }
+            }
+
             episodesHTML = `
                 <div class="episodes-section">
                     <h3 class="episodes-title">Danh sách tập phim</h3>
                     <div class="episodes-grid">
-                        ${serverData.server_data.map((ep, idx) => `
-                            <button class="episode-btn" onclick="playEpisode('${ep.link_embed.replace(/'/g, "\\'")}', '${ep.name.replace(/'/g, "\\'")}', 0, ${idx})">
-                                ${ep.name}
-                            </button>
-                        `).join('')}
+                        ${availableEpisodes}
+                        ${upcomingEpisodes}
                     </div>
                 </div>
             `;

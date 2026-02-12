@@ -773,12 +773,39 @@ body {
     transition: var(--transition);
     font-weight: 600;
     font-size: 14px;
+    min-width: 48px;
+    text-align: center;
 }
 
-.episode-btn:hover {
-    background: var(--primary);
-    border-color: var(--primary);
+/* Available Episodes: Green */
+.episode-btn.available {
+    background: #10b981;
+    border-color: #10b981;
+    color: white;
+}
+
+/* Hover State (Available): Red */
+.episode-btn.available:hover {
+    background: #ef4444;
+    border-color: #ef4444;
     transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+}
+
+/* Upcoming Episodes: Yellow */
+.episode-btn.upcoming {
+    background: #f59e0b;
+    border-color: #f59e0b;
+    color: #000;
+    opacity: 0.8;
+    cursor: not-allowed;
+    filter: grayscale(0.2);
+}
+
+.episode-btn.upcoming:hover {
+    background: #f59e0b;
+    transform: none;
+    box-shadow: none;
 }
 
 .player-container {
