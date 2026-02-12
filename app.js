@@ -67,10 +67,13 @@ const createMovieCard = (movie) => {
     card.className = 'movie-card';
     card.onclick = () => showMovieDetail(movie.slug);
 
-    // Fix thumbnail URL - OPhim API returns relative URLs, need to add domain
+    // Fix thumbnail URL - OPhim API returns just filenames, need to add full path
     let posterUrl = movie.poster_url || movie.thumb_url || 'https://via.placeholder.com/300x450?text=No+Image';
-    if (posterUrl && posterUrl.startsWith('/')) {
-        posterUrl = `https://img.ophim.live${posterUrl}`;
+    if (posterUrl && !posterUrl.startsWith('http')) {
+        // If it's just a filename or starts with /, add the full CDN path
+        posterUrl = posterUrl.startsWith('/')
+            ? `https://img.ophim.live${posterUrl}`
+            : `https://img.ophim.live/uploads/movies/${posterUrl}`;
     }
     const quality = movie.quality || 'HD';
     const year = movie.year || new Date().getFullYear();
@@ -171,8 +174,10 @@ const loadHeroMovie = async () => {
     // Set background
     if (movie.poster_url || movie.thumb_url) {
         let bgUrl = movie.poster_url || movie.thumb_url;
-        if (bgUrl.startsWith('/')) {
-            bgUrl = `https://img.ophim.live${bgUrl}`;
+        if (!bgUrl.startsWith('http')) {
+            bgUrl = bgUrl.startsWith('/')
+                ? `https://img.ophim.live${bgUrl}`
+                : `https://img.ophim.live/uploads/movies/${bgUrl}`;
         }
         heroBg.style.backgroundImage = `url(${bgUrl})`;
     }
@@ -206,10 +211,12 @@ const showMovieDetail = async (slug) => {
     const movie = data.data.item;
     state.currentMovie = movie;
 
-    // Fix poster URL - OPhim API returns relative URLs
+    // Fix poster URL - OPhim API returns just filenames or paths
     let posterUrl = movie.poster_url || movie.thumb_url || 'https://via.placeholder.com/300x450?text=No+Image';
-    if (posterUrl && posterUrl.startsWith('/')) {
-        posterUrl = `https://img.ophim.live${posterUrl}`;
+    if (posterUrl && !posterUrl.startsWith('http')) {
+        posterUrl = posterUrl.startsWith('/')
+            ? `https://img.ophim.live${posterUrl}`
+            : `https://img.ophim.live/uploads/movies/${posterUrl}`;
     }
     const categories = movie.category?.map(cat => cat.name).join(', ') || 'Chưa phân loại';
     const countries = movie.country?.map(c => c.name).join(', ') || 'Không rõ';
