@@ -128,8 +128,11 @@ class Router {
                         <label class="filter-checkbox">
                             <input type="checkbox" value="hoathinh" data-filter="type"> Hoạt hình
                         </label>
-                         <label class="filter-checkbox">
+                        <label class="filter-checkbox">
                             <input type="checkbox" value="tvshows" data-filter="type"> TV Shows
+                        </label>
+                        <label class="filter-checkbox">
+                            <input type="checkbox" value="chieurap" data-filter="type"> Phim chiếu rạp
                         </label>
                     </div>
                 </div>
@@ -262,10 +265,11 @@ class Router {
             displayMovies = displayMovies.filter(m => {
                 const type = (m.type || '').toLowerCase(); // API type: single, series, hoathinh, tvshows
                 const slug = (m.slug || '').toLowerCase();
+                const isTheatrical = m.chieurap === true || m.chieurap === 'true' || slug.includes('chieu-rap') || (m.category || []).some(c => c.slug === 'phim-chieu-rap');
 
                 return types.some(t => {
+                    if (t === 'chieurap') return isTheatrical;
                     if (t === type) return true;
-                    // Fallback for logic if API type is missing or vague
                     if (t === 'hoathinh' && slug.includes('hoat-hinh')) return true;
                     if (t === 'tvshows' && (slug.includes('tv-shows') || slug.includes('tvshow'))) return true;
                     if (t === 'single' && type === 'single') return true;
