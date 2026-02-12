@@ -13,7 +13,7 @@ Chào mừng bạn đến với **zMovie** - nền tảng xem phim online miễn
 
 ## 🚀 Truy cập ngay
 
-👉 **[https://zenjichen.github.io/camcam](https://zenjichen.github.io/camcam)**
+👉 **[https://zenjichen.github.io/zMovie](https://zenjichen.github.io/zMovie)**
 
 ---
 
