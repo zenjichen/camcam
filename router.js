@@ -108,6 +108,8 @@ class Router {
                     <select id="sortSelect" class="filter-select">
                         <option value="newest">Mới nhất</option>
                         <option value="oldest">Cũ nhất</option>
+                        <option value="imdb-desc">Điểm IMDB cao nhất</option>
+                        <option value="imdb-asc">Điểm IMDB thấp nhất</option>
                         <option value="name-az">Tên A-Z</option>
                         <option value="name-za">Tên Z-A</option>
                         <option value="year-desc">Năm giảm dần</option>
@@ -310,6 +312,20 @@ class Router {
         // 2. Client-side Sorting
         switch (sort) {
             case 'oldest': displayMovies.reverse(); break;
+            case 'imdb-desc':
+                displayMovies.sort((a, b) => {
+                    const scoreA = a.tmdb?.vote_average || a.vote_average || 0;
+                    const scoreB = b.tmdb?.vote_average || b.vote_average || 0;
+                    return scoreB - scoreA;
+                });
+                break;
+            case 'imdb-asc':
+                displayMovies.sort((a, b) => {
+                    const scoreA = a.tmdb?.vote_average || a.vote_average || 0;
+                    const scoreB = b.tmdb?.vote_average || b.vote_average || 0;
+                    return scoreA - scoreB;
+                });
+                break;
             case 'name-az': displayMovies.sort((a, b) => (a.name || '').localeCompare(b.name || '')); break;
             case 'name-za': displayMovies.sort((a, b) => (b.name || '').localeCompare(a.name || '')); break;
             case 'year-desc': displayMovies.sort((a, b) => (b.year || 0) - (a.year || 0)); break;

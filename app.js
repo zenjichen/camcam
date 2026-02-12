@@ -80,16 +80,19 @@ const createMovieCard = (movie) => {
     const quality = movie.quality || 'HD';
     const year = movie.year || new Date().getFullYear();
     const episodeCurrent = movie.episode_current || 'Full';
+    const imdb = (movie.tmdb?.vote_average || movie.vote_average || 0).toFixed(1);
 
     card.innerHTML = `
         <img src="${posterUrl}" alt="${movie.name}" class="movie-poster" loading="lazy" onerror="this.src='https://via.placeholder.com/300x450?text=No+Image'">
         <div class="quality-badge">${quality}</div>
         <div class="movie-badge">${episodeCurrent}</div>
+        ${imdb > 0 ? `<div class="imdb-badge" style="position: absolute; top: 40px; left: 12px; background: #f5c518; color: #000; padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 11px; z-index: 2;">IMDb ${imdb}</div>` : ''}
         <div class="movie-overlay">
             <h3 class="movie-title">${movie.name}</h3>
             <div class="movie-info">
                 <span>${year}</span>
                 ${movie.lang ? `<span>${movie.lang}</span>` : ''}
+                ${imdb > 0 ? `<span>⭐ ${imdb}</span>` : ''}
             </div>
         </div>
         <div class="movie-title-bottom">${movie.name}</div>
