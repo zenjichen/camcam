@@ -1,4 +1,4 @@
-// Enhanced Player with Server Selector and Episode List
+// Enhanced Player with HLS.js Support, Server Selector and Episode List
 // This file extends the main app.js with advanced player features
 
 // Override the playEpisode function with enhanced version
@@ -66,6 +66,13 @@ window.playEpisode = (embedUrl, episodeName, serverIndex = 0, episodeIndex = 0) 
         episodeIndex = 0;
     }
 
+    const currentEpisode = currentServer.server_data[episodeIndex];
+    const m3u8Url = currentEpisode.link_m3u8;
+    const actualEmbedUrl = currentEpisode.link_embed || embedUrl;
+
+    console.log('Player - m3u8 URL:', m3u8Url);
+    console.log('Player - Embed URL:', actualEmbedUrl);
+
     // Build server tabs
     const serverTabs = movie.episodes.map((server, idx) => `
         <button class="server-tab ${idx === serverIndex ? 'active' : ''}" 
@@ -81,7 +88,7 @@ window.playEpisode = (embedUrl, episodeName, serverIndex = 0, episodeIndex = 0) 
     // Build episode list for current server
     const episodeList = currentServer.server_data.map((ep, idx) => `
         <button class="episode-item ${idx === episodeIndex ? 'active' : ''}" 
-                onclick="playEpisode('${ep.link_embed.replace(/'/g, "\\'")}', '${ep.name.replace(/'/g, "\\'")}', ${serverIndex}, ${idx})"
+                onclick="switchEpisode(${serverIndex}, ${idx})"
                 title="Xem ${ep.name}">
             ${ep.name}
         </button>
@@ -91,6 +98,55 @@ window.playEpisode = (embedUrl, episodeName, serverIndex = 0, episodeIndex = 0) 
     const totalEpisodes = currentServer.server_data.length;
     const hasPrev = episodeIndex > 0;
     const hasNext = episodeIndex < totalEpisodes - 1;
+
+    // Determine player type: prefer m3u8, fallback to embed
+    let videoHTML;
+    if (m3u8Url && m3u8Url.trim() !== '') {
+        // Use HLS.js player with native video element
+        videoHTML = `
+            <div class="video-container" id="videoPlayerContainer">
+                <video id="hlsVideoPlayer" controls autoplay playsinline 
+                       style="width:100%;height:100%;position:absolute;top:0;left:0;background:#000;">
+                    Your browser does not support the video tag.
+                </video>
+                <div id="playerLoading" class="player-loading">
+                    <div class="loading-spinner"></div>
+                    <p>Đang tải phim...</p>
+                </div>
+            </div>
+        `;
+    } else {
+        // Fallback to iframe embed
+        videoHTML = `
+            <div class="video-container">
+                <iframe 
+                    src="${actualEmbedUrl}" 
+                    allowfullscreen 
+                    allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+                    frameborder="0"
+                    scrolling="no">
+                </iframe>
+            </div>
+        `;
+    }
+
+    // Player mode toggle buttons
+    const playerModeHTML = (m3u8Url && m3u8Url.trim() !== '') ? `
+        <div class="player-mode-toggle">
+            <button class="mode-btn active" id="hlsMode" onclick="setPlayerMode('hls', ${serverIndex}, ${episodeIndex})">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M21 3H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H3V5h18v14zM10 8v8l5-4z"/>
+                </svg>
+                HLS Player
+            </button>
+            <button class="mode-btn" id="embedMode" onclick="setPlayerMode('embed', ${serverIndex}, ${episodeIndex})">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M19 4H5a2 2 0 00-2 2v12a2 2 0 002 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H5V8h14v12z"/>
+                </svg>
+                Embed Player
+            </button>
+        </div>
+    ` : '';
 
     elements.playerContainer.innerHTML = `
         <div class="player-wrapper">
@@ -106,19 +162,12 @@ window.playEpisode = (embedUrl, episodeName, serverIndex = 0, episodeIndex = 0) 
                 </button>
             </div>
             
-            <div class="video-container">
-                <iframe 
-                    src="${embedUrl}" 
-                    allowfullscreen 
-                    allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
-                    frameborder="0"
-                    scrolling="no">
-                </iframe>
-            </div>
+            ${videoHTML}
+            ${playerModeHTML}
             
             <div class="player-controls">
                 <button class="control-btn" ${!hasPrev ? 'disabled' : ''} 
-                        onclick="${hasPrev ? `playEpisode('${currentServer.server_data[episodeIndex - 1].link_embed.replace(/'/g, "\\'")}', '${currentServer.server_data[episodeIndex - 1].name.replace(/'/g, "\\'")}', ${serverIndex}, ${episodeIndex - 1})` : 'return false'}"
+                        onclick="${hasPrev ? `switchEpisode(${serverIndex}, ${episodeIndex - 1})` : 'return false'}"
                         title="Tập trước">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
                         <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/>
@@ -131,7 +180,7 @@ window.playEpisode = (embedUrl, episodeName, serverIndex = 0, episodeIndex = 0) 
                 </div>
                 
                 <button class="control-btn" ${!hasNext ? 'disabled' : ''}
-                        onclick="${hasNext ? `playEpisode('${currentServer.server_data[episodeIndex + 1].link_embed.replace(/'/g, "\\'")}', '${currentServer.server_data[episodeIndex + 1].name.replace(/'/g, "\\'")}', ${serverIndex}, ${episodeIndex + 1})` : 'return false'}"
+                        onclick="${hasNext ? `switchEpisode(${serverIndex}, ${episodeIndex + 1})` : 'return false'}"
                         title="Tập sau">
                     Tập sau
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
@@ -177,8 +226,195 @@ window.playEpisode = (embedUrl, episodeName, serverIndex = 0, episodeIndex = 0) 
         </div>
     `;
 
+    // Initialize HLS player if using m3u8
+    if (m3u8Url && m3u8Url.trim() !== '') {
+        initHLSPlayer(m3u8Url);
+    }
+
     // Scroll to top of player
     elements.playerModal.scrollTop = 0;
+};
+
+// Initialize HLS.js player
+function initHLSPlayer(m3u8Url) {
+    const video = document.getElementById('hlsVideoPlayer');
+    const loading = document.getElementById('playerLoading');
+
+    if (!video) {
+        console.error('Video element not found');
+        return;
+    }
+
+    // Check if HLS.js is loaded
+    if (typeof Hls !== 'undefined') {
+        if (Hls.isSupported()) {
+            const hls = new Hls({
+                maxBufferLength: 30,
+                maxMaxBufferLength: 60,
+                startLevel: -1, // Auto quality
+            });
+
+            hls.loadSource(m3u8Url);
+            hls.attachMedia(video);
+
+            hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                console.log('HLS manifest loaded, starting playback');
+                if (loading) loading.style.display = 'none';
+                video.play().catch(e => {
+                    console.log('Autoplay blocked:', e);
+                    if (loading) loading.style.display = 'none';
+                });
+            });
+
+            hls.on(Hls.Events.ERROR, (event, data) => {
+                console.error('HLS Error:', data);
+                if (data.fatal) {
+                    switch (data.type) {
+                        case Hls.ErrorTypes.NETWORK_ERROR:
+                            console.log('Network error, trying to recover...');
+                            hls.startLoad();
+                            break;
+                        case Hls.ErrorTypes.MEDIA_ERROR:
+                            console.log('Media error, trying to recover...');
+                            hls.recoverMediaError();
+                            break;
+                        default:
+                            console.error('Fatal HLS error, falling back to embed');
+                            hls.destroy();
+                            fallbackToEmbed();
+                            break;
+                    }
+                }
+            });
+
+            // Store hls instance for cleanup
+            window._currentHls = hls;
+        } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+            // Native HLS support (Safari)
+            video.src = m3u8Url;
+            video.addEventListener('loadedmetadata', () => {
+                if (loading) loading.style.display = 'none';
+                video.play().catch(() => { });
+            });
+        }
+    } else {
+        // HLS.js not loaded yet, load it dynamically
+        console.log('Loading HLS.js dynamically...');
+        const script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/hls.js@latest';
+        script.onload = () => {
+            console.log('HLS.js loaded successfully');
+            initHLSPlayer(m3u8Url);
+        };
+        script.onerror = () => {
+            console.error('Failed to load HLS.js, falling back to embed');
+            fallbackToEmbed();
+        };
+        document.head.appendChild(script);
+    }
+}
+
+// Fallback to embed player
+function fallbackToEmbed() {
+    const movie = window.state?.currentMovie;
+    if (!movie) return;
+
+    const container = document.getElementById('videoPlayerContainer');
+    if (!container) return;
+
+    // Get current episode embed URL from data attributes or movie data
+    const serverIndex = parseInt(container.dataset.serverIndex || '0');
+    const episodeIndex = parseInt(container.dataset.episodeIndex || '0');
+
+    let embedUrl = '';
+    if (movie.episodes && movie.episodes[serverIndex] && movie.episodes[serverIndex].server_data[episodeIndex]) {
+        embedUrl = movie.episodes[serverIndex].server_data[episodeIndex].link_embed;
+    }
+
+    if (embedUrl) {
+        container.innerHTML = `
+            <iframe 
+                src="${embedUrl}" 
+                allowfullscreen 
+                allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+                frameborder="0"
+                scrolling="no"
+                style="position:absolute;top:0;left:0;width:100%;height:100%;border:none;">
+            </iframe>
+        `;
+    }
+}
+
+// Set player mode (HLS or Embed)
+window.setPlayerMode = (mode, serverIndex, episodeIndex) => {
+    const movie = window.state?.currentMovie;
+    if (!movie) return;
+
+    const ep = movie.episodes[serverIndex]?.server_data[episodeIndex];
+    if (!ep) return;
+
+    const container = document.getElementById('videoPlayerContainer');
+    if (!container) return;
+
+    // Cleanup existing HLS
+    if (window._currentHls) {
+        window._currentHls.destroy();
+        window._currentHls = null;
+    }
+
+    // Update mode buttons
+    document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
+
+    if (mode === 'hls' && ep.link_m3u8) {
+        document.getElementById('hlsMode')?.classList.add('active');
+        container.innerHTML = `
+            <video id="hlsVideoPlayer" controls autoplay playsinline 
+                   style="width:100%;height:100%;position:absolute;top:0;left:0;background:#000;">
+                Your browser does not support the video tag.
+            </video>
+            <div id="playerLoading" class="player-loading">
+                <div class="loading-spinner"></div>
+                <p>Đang tải phim...</p>
+            </div>
+        `;
+        initHLSPlayer(ep.link_m3u8);
+    } else {
+        document.getElementById('embedMode')?.classList.add('active');
+        container.innerHTML = `
+            <iframe 
+                src="${ep.link_embed}" 
+                allowfullscreen 
+                allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+                frameborder="0"
+                scrolling="no"
+                style="position:absolute;top:0;left:0;width:100%;height:100%;border:none;">
+            </iframe>
+        `;
+    }
+};
+
+// Switch Episode function
+window.switchEpisode = (serverIndex, episodeIndex) => {
+    const movie = window.state?.currentMovie;
+    if (!movie || !movie.episodes || !movie.episodes[serverIndex]) {
+        console.error('Invalid server index');
+        return;
+    }
+
+    const server = movie.episodes[serverIndex];
+    if (!server.server_data || !server.server_data[episodeIndex]) {
+        console.error('Invalid episode index');
+        return;
+    }
+
+    // Cleanup existing HLS
+    if (window._currentHls) {
+        window._currentHls.destroy();
+        window._currentHls = null;
+    }
+
+    const episode = server.server_data[episodeIndex];
+    playEpisode(episode.link_embed, episode.name, serverIndex, episodeIndex);
 };
 
 // Switch Server function
@@ -195,18 +431,40 @@ window.switchServer = (serverIndex, episodeIndex = 0) => {
         return;
     }
 
+    // Cleanup existing HLS
+    if (window._currentHls) {
+        window._currentHls.destroy();
+        window._currentHls = null;
+    }
+
     const episode = server.server_data[episodeIndex];
     playEpisode(episode.link_embed, episode.name, serverIndex, episodeIndex);
 };
 
 // Close Player function
 window.closePlayer = () => {
+    // Cleanup HLS
+    if (window._currentHls) {
+        window._currentHls.destroy();
+        window._currentHls = null;
+    }
+
+    // Pause any playing video
+    const video = document.getElementById('hlsVideoPlayer');
+    if (video) {
+        video.pause();
+        video.src = '';
+    }
+
     const playerModal = document.getElementById('playerModal');
     const movieModal = document.getElementById('movieModal');
 
     playerModal.classList.remove('active');
     movieModal.classList.add('active');
     document.body.style.overflow = 'hidden';
+
+    // Clear player container
+    document.getElementById('playerContainer').innerHTML = '';
 };
 
-console.log('Enhanced player loaded successfully');
+console.log('Enhanced player with HLS.js support loaded successfully');
