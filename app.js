@@ -6,7 +6,7 @@ const API_ENDPOINTS = {
     series: '/v1/api/danh-sach/phim-bo',
     animation: '/v1/api/danh-sach/hoat-hinh',
     search: '/v1/api/tim-kiem',
-    detail: '/phim',
+    detail: '/v1/api/phim',
     categories: '/the-loai',
     countries: '/quoc-gia',
 };
