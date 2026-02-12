@@ -506,34 +506,64 @@ window.showMovieDetail = showMovieDetail;
 
 // Typewriter Title Effect
 const initTypewriterEffect = () => {
-    const titleText = "zMovie - Xem Phim Online Miễn Phí";
+    const originalText = "zMovie - Xem Phim Online";
     let index = 0;
     let isDeleting = false;
-    let currentText = "";
+    let cursorVisible = true;
+    let cursorInterval;
+
+    // Blink cursor function
+    const toggleCursor = () => {
+        cursorVisible = !cursorVisible;
+        updateTitle();
+    };
+
+    const updateTitle = () => {
+        const currentText = originalText.substring(0, index);
+        // Use a distinct cursor symbol often seen on guns.lol
+        const cursor = cursorVisible ? "_" : "";
+
+        // Handle empty text case
+        const displayTitle = currentText + cursor;
+        document.title = displayTitle.length > 0 ? displayTitle : " ";
+    };
 
     const type = () => {
         if (isDeleting) {
-            currentText = titleText.substring(0, index - 1);
             index--;
         } else {
-            currentText = titleText.substring(0, index + 1);
             index++;
         }
 
-        // Ensure at least one character is always visible to avoid empty title
-        if (currentText === "") currentText = " ";
+        cursorVisible = true; // Always show cursor while typing
+        updateTitle();
 
-        document.title = currentText;
+        // Speed logic
+        let typeSpeed = isDeleting ? 40 : 80;
 
-        // Randomize speed slightly for realism
-        let typeSpeed = isDeleting ? 30 : 100;
-
-        if (!isDeleting && index === titleText.length) {
-            typeSpeed = 3000; // Pause at end
+        // Logic for pausing at ends
+        if (!isDeleting && index === originalText.length) {
+            // Typing finished, start strict blinking
             isDeleting = true;
+            typeSpeed = 3000;
+
+            // Start blinking cursor while waiting
+            if (cursorInterval) clearInterval(cursorInterval);
+            cursorInterval = setInterval(toggleCursor, 500);
+
         } else if (isDeleting && index === 0) {
+            // Deleting finished
             isDeleting = false;
-            typeSpeed = 1000; // Pause before start
+            typeSpeed = 1000;
+
+            if (cursorInterval) clearInterval(cursorInterval);
+            cursorInterval = setInterval(toggleCursor, 500);
+        } else {
+            // Processing typing/deleting, stop blinking interval to avoid conflict
+            if (cursorInterval) {
+                clearInterval(cursorInterval);
+                cursorInterval = null;
+            }
         }
 
         setTimeout(type, typeSpeed);
