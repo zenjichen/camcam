@@ -78,26 +78,81 @@ class Router {
 
     createFilterControls() {
         return `
-            <div class="filter-controls" style="margin-bottom: 24px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
-                <label style="color: var(--text-secondary); font-size: 14px; font-weight: 500;">Sắp xếp:</label>
-                <select id="sortSelect" class="filter-select" style="
-                    background: var(--bg-secondary);
-                    border: 1px solid rgba(255,255,255,0.1);
-                    border-radius: 8px;
-                    padding: 8px 16px;
-                    color: var(--text-primary);
-                    font-size: 14px;
-                    cursor: pointer;
-                    transition: all 0.3s ease;
-                ">
-                    <option value="newest">Mới nhất</option>
-                    <option value="oldest">Cũ nhất</option>
-                    <option value="name-az">Tên A-Z</option>
-                    <option value="name-za">Tên Z-A</option>
-                    <option value="year-desc">Năm giảm dần</option>
-                    <option value="year-asc">Năm tăng dần</option>
-                </select>
-                <span id="movieCount" style="margin-left: auto; color: var(--text-secondary); font-size: 14px;"></span>
+            <div class="advanced-filters">
+                <!-- Sort -->
+                <div class="filter-group">
+                    <label class="filter-label">Sắp xếp:</label>
+                    <select id="sortSelect" class="filter-select">
+                        <option value="newest">Mới nhất</option>
+                        <option value="oldest">Cũ nhất</option>
+                        <option value="name-az">Tên A-Z</option>
+                        <option value="name-za">Tên Z-A</option>
+                        <option value="year-desc">Năm giảm dần</option>
+                        <option value="year-asc">Năm tăng dần</option>
+                    </select>
+                </div>
+
+                <!-- Type Filter -->
+                <div class="filter-group">
+                    <label class="filter-label">Loại phim:</label>
+                    <div class="filter-checkboxes">
+                        <label class="filter-checkbox">
+                            <input type="checkbox" value="phim-le" data-filter="type"> Phim lẻ
+                        </label>
+                        <label class="filter-checkbox">
+                            <input type="checkbox" value="phim-bo" data-filter="type"> Phim bộ
+                        </label>
+                        <label class="filter-checkbox">
+                            <input type="checkbox" value="hoat-hinh" data-filter="type"> Hoạt hình
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Year Filter -->
+                <div class="filter-group">
+                    <label class="filter-label">Năm:</label>
+                    <div class="filter-checkboxes">
+                        <label class="filter-checkbox">
+                            <input type="checkbox" value="2024" data-filter="year"> 2024
+                        </label>
+                        <label class="filter-checkbox">
+                            <input type="checkbox" value="2023" data-filter="year"> 2023
+                        </label>
+                        <label class="filter-checkbox">
+                            <input type="checkbox" value="2022" data-filter="year"> 2022
+                        </label>
+                        <label class="filter-checkbox">
+                            <input type="checkbox" value="2021" data-filter="year"> 2021
+                        </label>
+                        <label class="filter-checkbox">
+                            <input type="checkbox" value="old" data-filter="year"> Trước 2021
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Quality Filter -->
+                <div class="filter-group">
+                    <label class="filter-label">Chất lượng:</label>
+                    <div class="filter-checkboxes">
+                        <label class="filter-checkbox">
+                            <input type="checkbox" value="HD" data-filter="quality"> HD
+                        </label>
+                        <label class="filter-checkbox">
+                            <input type="checkbox" value="Full HD" data-filter="quality"> Full HD
+                        </label>
+                        <label class="filter-checkbox">
+                            <input type="checkbox" value="CAM" data-filter="quality"> CAM
+                        </label>
+                        <label class="filter-checkbox">
+                            <input type="checkbox" value="Trailer" data-filter="quality"> Trailer
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Movie Count -->
+                <div class="filter-group" style="margin-left: auto;">
+                    <span id="movieCount" class="movie-count"></span>
+                </div>
             </div>
         `;
     }
@@ -291,19 +346,76 @@ class Router {
         this.currentData.allMovies = allMovies;
         this.currentData.filteredMovies = allMovies;
 
-        // Setup sort handler
+        // Setup all filter handlers
+        this.setupFilterHandlers(filteredMovies);
+
+        // Initial render
+        this.renderMovies(allMovies, filteredMovies);
+    }
+
+    setupFilterHandlers(container) {
+        // Sort handler
         const sortSelect = document.getElementById('sortSelect');
         if (sortSelect) {
             sortSelect.addEventListener('change', (e) => {
                 this.currentData.currentSort = e.target.value;
-                this.currentData.currentPage = 1; // Reset to first page when sorting
-                const sorted = this.sortMovies(this.currentData.allMovies, e.target.value);
-                this.renderMovies(sorted, filteredMovies);
+                this.currentData.currentPage = 1;
+                this.applyAllFilters(container);
             });
         }
 
-        // Initial render
-        this.renderMovies(allMovies, filteredMovies);
+        // Checkbox filter handlers
+        const checkboxes = document.querySelectorAll('[data-filter]');
+        checkboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', () => {
+                this.currentData.currentPage = 1;
+                this.applyAllFilters(container);
+            });
+        });
+    }
+
+    applyAllFilters(container) {
+        let filtered = [...this.currentData.allMovies];
+
+        // Apply type filter
+        const typeCheckboxes = Array.from(document.querySelectorAll('[data-filter="type"]:checked'));
+        if (typeCheckboxes.length > 0) {
+            const selectedTypes = typeCheckboxes.map(cb => cb.value);
+            filtered = filtered.filter(movie => {
+                const movieType = movie.type || '';
+                return selectedTypes.includes(movieType);
+            });
+        }
+
+        // Apply year filter
+        const yearCheckboxes = Array.from(document.querySelectorAll('[data-filter="year"]:checked'));
+        if (yearCheckboxes.length > 0) {
+            filtered = filtered.filter(movie => {
+                const movieYear = movie.year;
+                return yearCheckboxes.some(cb => {
+                    if (cb.value === 'old') {
+                        return movieYear < 2021;
+                    }
+                    return movieYear == cb.value;
+                });
+            });
+        }
+
+        // Apply quality filter
+        const qualityCheckboxes = Array.from(document.querySelectorAll('[data-filter="quality"]:checked'));
+        if (qualityCheckboxes.length > 0) {
+            const selectedQualities = qualityCheckboxes.map(cb => cb.value);
+            filtered = filtered.filter(movie => {
+                const movieQuality = movie.quality || '';
+                return selectedQualities.some(q => movieQuality.includes(q));
+            });
+        }
+
+        // Apply sort
+        const sorted = this.sortMovies(filtered, this.currentData.currentSort);
+
+        // Render
+        this.renderMovies(sorted, container);
     }
 
     async loadCountry(slug) {
@@ -357,25 +469,18 @@ class Router {
         this.currentData.allMovies = allMovies;
         this.currentData.filteredMovies = allMovies;
 
-        // Setup sort handler
-        const sortSelect = document.getElementById('sortSelect');
-        if (sortSelect) {
-            sortSelect.addEventListener('change', (e) => {
-                this.currentData.currentSort = e.target.value;
-                this.currentData.currentPage = 1; // Reset to first page when sorting
-                const sorted = this.sortMovies(this.currentData.allMovies, e.target.value);
-                this.renderMovies(sorted, filteredMovies);
-            });
-        }
+        // Setup all filter handlers
+        this.setupFilterHandlers(filteredMovies);
 
         // Initial render
         this.renderMovies(allMovies, filteredMovies);
     }
 
-    async loadAllPages(endpoint, maxPages = 5) {
+    async loadAllPages(endpoint) {
         let allMovies = [];
+        let page = 1;
 
-        for (let page = 1; page <= maxPages; page++) {
+        while (true) {
             const data = await window.fetchAPI(endpoint, { page });
 
             if (!data) break;
@@ -396,6 +501,8 @@ class Router {
             if (pagination && page >= pagination.totalPages) {
                 break;
             }
+
+            page++;
         }
 
         return allMovies;
