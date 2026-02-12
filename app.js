@@ -504,9 +504,48 @@ window.searchMovies = searchMovies;
 window.loadFilters = loadFilters;
 window.showMovieDetail = showMovieDetail;
 
+// Typewriter Title Effect
+const initTypewriterEffect = () => {
+    const titleText = "zMovie - Xem Phim Online Miễn Phí";
+    let index = 0;
+    let isDeleting = false;
+    let currentText = "";
+
+    const type = () => {
+        if (isDeleting) {
+            currentText = titleText.substring(0, index - 1);
+            index--;
+        } else {
+            currentText = titleText.substring(0, index + 1);
+            index++;
+        }
+
+        // Ensure at least one character is always visible to avoid empty title
+        if (currentText === "") currentText = " ";
+
+        document.title = currentText;
+
+        // Randomize speed slightly for realism
+        let typeSpeed = isDeleting ? 30 : 100;
+
+        if (!isDeleting && index === titleText.length) {
+            typeSpeed = 3000; // Pause at end
+            isDeleting = true;
+        } else if (isDeleting && index === 0) {
+            isDeleting = false;
+            typeSpeed = 1000; // Pause before start
+        }
+
+        setTimeout(type, typeSpeed);
+    };
+
+    type();
+};
+
 // Initialize App
 const init = async () => {
     console.log('🎬 Initializing zMovie App...');
+    initTypewriterEffect();
 
     // Load hero movie
     await loadHeroMovie();
