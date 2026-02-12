@@ -12,13 +12,19 @@ class Router {
         };
 
         this.currentData = {
-            type: null,
+            type: null, // 'genre', 'country', 'search'
             slug: null,
-            allMovies: [],
-            filteredMovies: [],
-            currentSort: 'newest',
+            endpoint: null, // API endpoint for pagination
             currentPage: 1,
-            itemsPerPage: 20
+            totalPages: 1,
+            movies: [], // Movies of current page only
+            itemsPerPage: 24, // Consistent with API
+            filterConfig: {
+                sort: 'newest',
+                types: [],
+                years: [],
+                qualities: []
+            }
         };
 
         window.addEventListener('hashchange', () => this.handleRoute());
@@ -157,379 +163,236 @@ class Router {
         `;
     }
 
-    sortMovies(movies, sortType) {
-        const sorted = [...movies];
-
-        switch (sortType) {
-            case 'newest':
-                // API default order (modified time)
-                return sorted;
-            case 'oldest':
-                return sorted.reverse();
-            case 'name-az':
-                return sorted.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-            case 'name-za':
-                return sorted.sort((a, b) => (b.name || '').localeCompare(a.name || ''));
-            case 'year-desc':
-                return sorted.sort((a, b) => (b.year || 0) - (a.year || 0));
-            case 'year-asc':
-                return sorted.sort((a, b) => (a.year || 0) - (b.year || 0));
-            default:
-                return sorted;
-        }
-    }
-
-    renderMovies(movies, container) {
-        if (!container) return;
-
-        container.innerHTML = '';
-
-        if (movies.length === 0) {
-            container.innerHTML = '<div style="text-align: center; padding: 60px; color: var(--text-secondary); grid-column: 1/-1;">Không có phim nào</div>';
-            return;
-        }
-
-        // Calculate pagination
-        const totalPages = Math.ceil(movies.length / this.currentData.itemsPerPage);
-        const startIndex = (this.currentData.currentPage - 1) * this.currentData.itemsPerPage;
-        const endIndex = startIndex + this.currentData.itemsPerPage;
-        const currentPageMovies = movies.slice(startIndex, endIndex);
-
-        // Render current page movies
-        currentPageMovies.forEach(movie => {
-            container.appendChild(window.createMovieCard(movie));
-        });
-
-        // Update count
-        const countElement = document.getElementById('movieCount');
-        if (countElement) {
-            countElement.textContent = `Tổng: ${movies.length} phim`;
-        }
-
-        // Add pagination controls
-        this.renderPaginationControls(container, totalPages, movies.length);
-    }
-
-    renderPaginationControls(container, totalPages, totalMovies) {
-        if (totalPages <= 1) return; // No pagination needed for single page
-
-        const paginationDiv = document.createElement('div');
-        paginationDiv.className = 'pagination-controls';
-        paginationDiv.style.gridColumn = '1/-1';
-
-        let paginationHTML = '';
-
-        // Previous button
-        paginationHTML += `
-            <button class="pagination-btn" ${this.currentData.currentPage === 1 ? 'disabled' : ''} onclick="router.goToPage(${this.currentData.currentPage - 1})">
-                ← Trước
-            </button>
-        `;
-
-        // Page numbers
-        const maxVisiblePages = 5;
-        let startPage = Math.max(1, this.currentData.currentPage - Math.floor(maxVisiblePages / 2));
-        let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
-
-        if (endPage - startPage + 1 < maxVisiblePages) {
-            startPage = Math.max(1, endPage - maxVisiblePages + 1);
-        }
-
-        // First page
-        if (startPage > 1) {
-            paginationHTML += `
-                <button class="pagination-btn" onclick="router.goToPage(1)">1</button>
-            `;
-            if (startPage > 2) {
-                paginationHTML += '<span class="pagination-info">...</span>';
-            }
-        }
-
-        // Page numbers
-        for (let i = startPage; i <= endPage; i++) {
-            paginationHTML += `
-                <button class="pagination-btn ${i === this.currentData.currentPage ? 'active' : ''}" onclick="router.goToPage(${i})">
-                    ${i}
-                </button>
-            `;
-        }
-
-        // Last page
-        if (endPage < totalPages) {
-            if (endPage < totalPages - 1) {
-                paginationHTML += '<span class="pagination-info">...</span>';
-            }
-            paginationHTML += `
-                <button class="pagination-btn" onclick="router.goToPage(${totalPages})">${totalPages}</button>
-            `;
-        }
-
-        // Next button
-        paginationHTML += `
-            <button class="pagination-btn" ${this.currentData.currentPage === totalPages ? 'disabled' : ''} onclick="router.goToPage(${this.currentData.currentPage + 1})">
-                Tiếp →
-            </button>
-        `;
-
-        // Page info
-        const startItem = (this.currentData.currentPage - 1) * this.currentData.itemsPerPage + 1;
-        const endItem = Math.min(this.currentData.currentPage * this.currentData.itemsPerPage, totalMovies);
-        paginationHTML += `
-            <span class="pagination-info">${startItem}-${endItem} / ${totalMovies}</span>
-        `;
-
-        paginationDiv.innerHTML = paginationHTML;
-        container.appendChild(paginationDiv);
-    }
-
-    goToPage(page) {
-        this.currentData.currentPage = page;
-        const filteredMovies = document.getElementById('filteredMovies');
-        const sorted = this.sortMovies(this.currentData.allMovies, this.currentData.currentSort);
-        this.renderMovies(sorted, filteredMovies);
-
-        // Scroll to top of filtered section
-        const filteredSection = document.getElementById('filteredSection');
-        if (filteredSection) {
-            filteredSection.scrollIntoView({ behavior: 'smooth' });
-        }
-    }
-
-    async loadGenre(slug) {
-        if (!slug) return;
-
-        this.hideHomeSections();
-
-        const genreName = window.state?.genres?.find(g => g.slug === slug)?.name || slug;
-
-        // Show filtered section
-        const filteredSection = document.getElementById('filteredSection');
-        const sectionTitle = filteredSection?.querySelector('.section-title');
-        const filteredTitle = document.getElementById('filteredTitle');
-        const filteredMovies = document.getElementById('filteredMovies');
-
-        if (!filteredSection || !filteredTitle || !filteredMovies) return;
-
-        filteredSection.style.display = 'block';
-
-        // Update section title
-        if (sectionTitle) {
-            sectionTitle.textContent = `Thể loại: ${genreName}`;
-        }
-
-        // Add filter controls
-        filteredTitle.innerHTML = this.createFilterControls();
-
-        filteredMovies.innerHTML = `
-            <div style="grid-column: 1/-1; text-align: center; padding: 40px;">
-                <div class="skeleton" style="width: 200px; height: 200px; margin: 0 auto; border-radius: 12px;"></div>
-                <p style="margin-top: 16px; color: var(--text-secondary);">Đang tải phim...</p>
-            </div>
-        `;
-
-        // Scroll to filtered section
-        filteredSection.scrollIntoView({ behavior: 'smooth' });
-
-        // Store current filter
-        this.currentData.type = 'genre';
-        this.currentData.slug = slug;
-        this.currentData.currentPage = 1; // Reset to first page
-
-        // Load all pages
-        const allMovies = await this.loadAllPages(`/v1/api/the-loai/${slug}`);
-
-        if (allMovies.length === 0) {
-            filteredMovies.innerHTML = '<div style="text-align: center; padding: 60px; color: var(--text-secondary); grid-column: 1/-1;">Không có phim nào trong thể loại này</div>';
-            return;
-        }
-
-        this.currentData.allMovies = allMovies;
-        this.currentData.filteredMovies = allMovies;
-
-        // Setup all filter handlers
-        this.setupFilterHandlers(filteredMovies);
-
-        // Initial render
-        this.renderMovies(allMovies, filteredMovies);
-    }
-
     setupFilterHandlers(container) {
-        // Sort handler
+        const updateFilters = () => {
+            // Collect filter states
+            const sort = document.getElementById('sortSelect').value;
+            const types = Array.from(document.querySelectorAll('[data-filter="type"]:checked')).map(cb => cb.value);
+            const years = Array.from(document.querySelectorAll('[data-filter="year"]:checked')).map(cb => cb.value);
+            const qualities = Array.from(document.querySelectorAll('[data-filter="quality"]:checked')).map(cb => cb.value);
+
+            this.currentData.filterConfig = { sort, types, years, qualities };
+
+            // Re-render current page specific data
+            this.renderFilteredMovies(container);
+        };
+
         const sortSelect = document.getElementById('sortSelect');
-        if (sortSelect) {
-            sortSelect.addEventListener('change', (e) => {
-                this.currentData.currentSort = e.target.value;
-                this.currentData.currentPage = 1;
-                this.applyAllFilters(container);
-            });
-        }
+        if (sortSelect) sortSelect.addEventListener('change', updateFilters);
 
-        // Checkbox filter handlers
         const checkboxes = document.querySelectorAll('[data-filter]');
-        checkboxes.forEach(checkbox => {
-            checkbox.addEventListener('change', () => {
-                this.currentData.currentPage = 1;
-                this.applyAllFilters(container);
-            });
-        });
+        checkboxes.forEach(cb => cb.addEventListener('change', updateFilters));
     }
 
-    applyAllFilters(container) {
-        let filtered = [...this.currentData.allMovies];
-
-        // Apply type filter
-        const typeCheckboxes = Array.from(document.querySelectorAll('[data-filter="type"]:checked'));
-        if (typeCheckboxes.length > 0) {
-            const selectedTypes = typeCheckboxes.map(cb => cb.value);
-            filtered = filtered.filter(movie => {
-                const movieType = movie.type || '';
-                return selectedTypes.includes(movieType);
-            });
-        }
-
-        // Apply year filter
-        const yearCheckboxes = Array.from(document.querySelectorAll('[data-filter="year"]:checked'));
-        if (yearCheckboxes.length > 0) {
-            filtered = filtered.filter(movie => {
-                const movieYear = movie.year;
-                return yearCheckboxes.some(cb => {
-                    if (cb.value === 'old') {
-                        return movieYear < 2021;
-                    }
-                    return movieYear == cb.value;
-                });
-            });
-        }
-
-        // Apply quality filter
-        const qualityCheckboxes = Array.from(document.querySelectorAll('[data-filter="quality"]:checked'));
-        if (qualityCheckboxes.length > 0) {
-            const selectedQualities = qualityCheckboxes.map(cb => cb.value);
-            filtered = filtered.filter(movie => {
-                const movieQuality = movie.quality || '';
-                return selectedQualities.some(q => movieQuality.includes(q));
-            });
-        }
-
-        // Apply sort
-        const sorted = this.sortMovies(filtered, this.currentData.currentSort);
-
-        // Render
-        this.renderMovies(sorted, container);
-    }
-
-    async loadCountry(slug) {
-        if (!slug) return;
-
-        this.hideHomeSections();
-
-        const countryName = window.state?.countries?.find(c => c.slug === slug)?.name || slug;
-
-        // Show filtered section
-        const filteredSection = document.getElementById('filteredSection');
-        const sectionTitle = filteredSection?.querySelector('.section-title');
-        const filteredTitle = document.getElementById('filteredTitle');
-        const filteredMovies = document.getElementById('filteredMovies');
-
-        if (!filteredSection || !filteredTitle || !filteredMovies) return;
-
-        filteredSection.style.display = 'block';
-
-        // Update section title
-        if (sectionTitle) {
-            sectionTitle.textContent = `Quốc gia: ${countryName}`;
-        }
-
-        // Add filter controls
-        filteredTitle.innerHTML = this.createFilterControls();
-
-        filteredMovies.innerHTML = `
+    // --- Core Data Fetching ---
+    async fetchAndRenderPage(page, container) {
+        container.innerHTML = `
             <div style="grid-column: 1/-1; text-align: center; padding: 40px;">
                 <div class="skeleton" style="width: 200px; height: 200px; margin: 0 auto; border-radius: 12px;"></div>
-                <p style="margin-top: 16px; color: var(--text-secondary);">Đang tải phim...</p>
+                <p style="margin-top: 16px; color: var(--text-secondary);">Đang tải trang ${page}...</p>
             </div>
         `;
 
-        // Scroll to filtered section
-        filteredSection.scrollIntoView({ behavior: 'smooth' });
+        // Fetch specific page
+        const params = { page, ...this.currentData.extraParams };
+        let url = this.currentData.endpoint;
 
-        // Store current filter
-        this.currentData.type = 'country';
-        this.currentData.slug = slug;
-        this.currentData.currentPage = 1; // Reset to first page
+        try {
+            const data = await window.fetchAPI(url, params);
 
-        // Load all pages
-        const allMovies = await this.loadAllPages(`/v1/api/quoc-gia/${slug}`);
+            if (!data) {
+                throw new Error('No data');
+            }
 
-        if (allMovies.length === 0) {
-            filteredMovies.innerHTML = '<div style="text-align: center; padding: 60px; color: var(--text-secondary); grid-column: 1/-1;">Không có phim nào từ quốc gia này</div>';
-            return;
-        }
-
-        this.currentData.allMovies = allMovies;
-        this.currentData.filteredMovies = allMovies;
-
-        // Setup all filter handlers
-        this.setupFilterHandlers(filteredMovies);
-
-        // Initial render
-        this.renderMovies(allMovies, filteredMovies);
-    }
-
-    async loadAllPages(endpoint) {
-        let allMovies = [];
-        let page = 1;
-
-        while (true) {
-            const data = await window.fetchAPI(endpoint, { page });
-
-            if (!data) break;
-
+            // Normalize Data
             let movies = [];
+            let totalPages = 1;
+
             if (data.items) {
                 movies = data.items;
             } else if (data.data && data.data.items) {
                 movies = data.data.items;
+                const pagination = data.data.params?.pagination;
+                if (pagination) {
+                    totalPages = Math.ceil(pagination.totalItems / pagination.totalItemsPerPage);
+                }
             }
 
-            if (movies.length === 0) break;
-
-            allMovies = [...allMovies, ...movies];
-
-            // Check if there are more pages
-            const pagination = data.data?.params?.pagination;
-            if (pagination && page >= pagination.totalPages) {
-                break;
+            // Fallback for total pages if not provided (OPhim specific)
+            if (data.data?.params?.pagination?.totalPages) {
+                totalPages = data.data.params.pagination.totalPages;
+            } else if (!totalPages && movies.length > 0) {
+                totalPages = 100; // Unknown limit
             }
 
-            page++;
+            this.currentData.movies = movies;
+            this.currentData.currentPage = page;
+            this.currentData.totalPages = totalPages;
+
+            this.renderFilteredMovies(container);
+
+        } catch (e) {
+            container.innerHTML = '<div style="text-align: center; padding: 60px; color: var(--text-error);">Lỗi kết nối API. Vui lòng thử lại.</div>';
+        }
+    }
+
+    // --- Rendering with Client-side Filter apply on Current Page Data ---
+    renderFilteredMovies(container) {
+        if (!container) container = document.getElementById('filteredMovies');
+        if (!container) return;
+
+        let displayMovies = [...this.currentData.movies];
+        const { sort, types, years, qualities } = this.currentData.filterConfig;
+
+        // 1. Client-side Filtering (on the 24 loaded items)
+        if (types.length > 0) {
+            displayMovies = displayMovies.filter(m => {
+                const slug = m.slug || '';
+                // Simple keyword check if 'type' field is missing in list API
+                return types.some(t => slug.includes(t) || (m.type || '').includes(t));
+            });
         }
 
-        return allMovies;
+        if (years.length > 0) {
+            displayMovies = displayMovies.filter(m => {
+                const y = m.year;
+                if (!y) return false;
+                return years.some(cond => {
+                    if (cond.startsWith('<')) return y < parseInt(cond.substring(1));
+                    return y == cond;
+                });
+            });
+        }
+
+        if (qualities.length > 0) {
+            displayMovies = displayMovies.filter(m => {
+                const q = m.quality || '';
+                return qualities.some(ql => q.includes(ql));
+            });
+        }
+
+        // 2. Client-side Sorting
+        switch (sort) {
+            case 'oldest': displayMovies.reverse(); break;
+            case 'name-az': displayMovies.sort((a, b) => (a.name || '').localeCompare(b.name || '')); break;
+            case 'name-za': displayMovies.sort((a, b) => (b.name || '').localeCompare(a.name || '')); break;
+            case 'year-desc': displayMovies.sort((a, b) => (b.year || 0) - (a.year || 0)); break;
+            case 'year-asc': displayMovies.sort((a, b) => (a.year || 0) - (b.year || 0)); break;
+        }
+
+        // 3. Render Items
+        container.innerHTML = '';
+        if (displayMovies.length === 0) {
+            container.innerHTML = `
+                <div style="grid-column: 1/-1; text-align: center; padding: 40px; color: var(--text-secondary);">
+                    <p>Không tìm thấy phim phù hợp trong trang này.</p>
+                    <p style="font-size: 0.9em; margin-top: 8px;">Hãy thử chuyển sang trang tiếp theo.</p>
+                </div>
+            `;
+        } else {
+            displayMovies.forEach(movie => {
+                container.appendChild(window.createMovieCard(movie));
+            });
+        }
+
+        // Update Count (Show count of valid items in this page)
+        const countElement = document.getElementById('movieCount');
+        if (countElement) {
+            countElement.textContent = `Trang ${this.currentData.currentPage}: ${displayMovies.length} phim`;
+        }
+
+        // 4. Render Pagination Controls
+        this.renderPagination(container);
+    }
+
+    renderPagination(container) {
+        const { currentPage } = this.currentData;
+
+        const controls = document.createElement('div');
+        controls.className = 'pagination-controls';
+        controls.style.gridColumn = '1/-1';
+
+        controls.innerHTML = `
+            <button class="pagination-btn" ${currentPage === 1 ? 'disabled' : ''} id="prevPageBtn">
+                ← Trang trước
+            </button>
+            <span class="pagination-info">Trang ${currentPage}</span>
+            <button class="pagination-btn" id="nextPageBtn">
+                Trang sau →
+            </button>
+        `;
+
+        container.appendChild(controls);
+
+        // Bind events
+        controls.querySelector('#prevPageBtn').onclick = () => {
+            if (currentPage > 1) {
+                this.fetchAndRenderPage(currentPage - 1, container);
+                document.getElementById('filteredSection').scrollIntoView({ behavior: 'smooth' });
+            }
+        };
+        controls.querySelector('#nextPageBtn').onclick = () => {
+            this.fetchAndRenderPage(currentPage + 1, container);
+            document.getElementById('filteredSection').scrollIntoView({ behavior: 'smooth' });
+        };
+    }
+
+    async loadGenre(slug) {
+        if (!slug) return;
+        const name = window.state?.genres?.find(g => g.slug === slug)?.name || slug;
+        await this.initFilteredPage('genre', slug, `Thể loại: ${name}`, `/v1/api/the-loai/${slug}`);
+    }
+
+    async loadCountry(slug) {
+        if (!slug) return;
+        const name = window.state?.countries?.find(c => c.slug === slug)?.name || slug;
+        await this.initFilteredPage('country', slug, `Quốc gia: ${name}`, `/v1/api/quoc-gia/${slug}`);
     }
 
     async loadSearch(query) {
         if (!query) return;
-
         const decodedQuery = decodeURIComponent(query);
+        await this.initFilteredPage('search', decodedQuery, `Tìm kiếm: ${decodedQuery}`, window.API_ENDPOINTS.search, { keyword: decodedQuery });
+    }
 
-        // Update search input
-        const searchInput = document.getElementById('searchInput');
-        if (searchInput) {
-            searchInput.value = decodedQuery;
-        }
+    async initFilteredPage(type, slug, title, endpoint, extraParams = {}) {
+        this.hideHomeSections();
+        const filteredSection = document.getElementById('filteredSection');
+        const sectionTitle = filteredSection?.querySelector('.section-title');
+        const filteredTitle = document.getElementById('filteredTitle');
+        const filteredMovies = document.getElementById('filteredMovies');
 
-        // Perform search
-        await window.searchMovies(decodedQuery);
+        if (!filteredSection || !filteredTitle || !filteredMovies) return;
+
+        filteredSection.style.display = 'block';
+        if (sectionTitle) sectionTitle.textContent = title;
+
+        filteredTitle.innerHTML = this.createFilterControls();
+        filteredMovies.innerHTML = `
+            <div style="grid-column: 1/-1; text-align: center; padding: 40px;">
+                <div class="skeleton" style="width: 200px; height: 200px; margin: 0 auto; border-radius: 12px;"></div>
+                <p style="margin-top: 16px; color: var(--text-secondary);">Đang tải phim...</p>
+            </div>
+        `;
+        filteredSection.scrollIntoView({ behavior: 'smooth' });
+
+        // Reset state
+        this.currentData = {
+            ...this.currentData,
+            type,
+            slug,
+            endpoint,
+            extraParams,
+            currentPage: 1,
+            movies: []
+        };
+
+        this.setupFilterHandlers(filteredMovies);
+        await this.fetchAndRenderPage(1, filteredMovies);
     }
 
     async searchByActor(name) {
-        if (!name) return;
-
-        const decodedName = decodeURIComponent(name);
-
-        // Search for movies with this actor
-        await window.searchMoviesByActor(decodedName);
+        window.location.hash = `tim-kiem/${name}`;
     }
 }
 
