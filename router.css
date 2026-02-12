@@ -32,8 +32,16 @@
     color: var(--text-primary);
 }
 
-.suggestion-item:last-child {
-    border-bottom: none;
+#filteredSection {
+    padding-top: 100px;
+    /* Prevent navbar overlap */
+    min-height: 100vh;
+}
+
+/* Movie Card Hover Effect Fix */
+.movie-card {
+    contain: content;
+    /* optimize rendering */
 }
 
 .suggestion-item:hover {

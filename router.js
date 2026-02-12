@@ -83,6 +83,23 @@ class Router {
     }
 
     createFilterControls() {
+        const currentYear = new Date().getFullYear();
+
+        // Generate Year Checkboxes (Current Year down to Current - 4)
+        let yearCheckboxesHTML = '';
+        for (let i = 0; i < 5; i++) {
+            const y = currentYear - i;
+            yearCheckboxesHTML += `
+                <label class="filter-checkbox">
+                    <input type="checkbox" value="${y}" data-filter="year"> ${y}
+                </label>`;
+        }
+        // Add "Before" option
+        yearCheckboxesHTML += `
+            <label class="filter-checkbox">
+                <input type="checkbox" value="<${currentYear - 4}" data-filter="year"> Trước ${currentYear - 4}
+            </label>`;
+
         return `
             <div class="advanced-filters">
                 <!-- Sort -->
@@ -103,13 +120,16 @@ class Router {
                     <label class="filter-label">Loại phim:</label>
                     <div class="filter-checkboxes">
                         <label class="filter-checkbox">
-                            <input type="checkbox" value="phim-le" data-filter="type"> Phim lẻ
+                            <input type="checkbox" value="single" data-filter="type"> Phim lẻ
                         </label>
                         <label class="filter-checkbox">
-                            <input type="checkbox" value="phim-bo" data-filter="type"> Phim bộ
+                            <input type="checkbox" value="series" data-filter="type"> Phim bộ
                         </label>
                         <label class="filter-checkbox">
-                            <input type="checkbox" value="hoat-hinh" data-filter="type"> Hoạt hình
+                            <input type="checkbox" value="hoathinh" data-filter="type"> Hoạt hình
+                        </label>
+                         <label class="filter-checkbox">
+                            <input type="checkbox" value="tvshows" data-filter="type"> TV Shows
                         </label>
                     </div>
                 </div>
@@ -118,21 +138,7 @@ class Router {
                 <div class="filter-group">
                     <label class="filter-label">Năm:</label>
                     <div class="filter-checkboxes">
-                        <label class="filter-checkbox">
-                            <input type="checkbox" value="2024" data-filter="year"> 2024
-                        </label>
-                        <label class="filter-checkbox">
-                            <input type="checkbox" value="2023" data-filter="year"> 2023
-                        </label>
-                        <label class="filter-checkbox">
-                            <input type="checkbox" value="2022" data-filter="year"> 2022
-                        </label>
-                        <label class="filter-checkbox">
-                            <input type="checkbox" value="2021" data-filter="year"> 2021
-                        </label>
-                        <label class="filter-checkbox">
-                            <input type="checkbox" value="old" data-filter="year"> Trước 2021
-                        </label>
+                        ${yearCheckboxesHTML}
                     </div>
                 </div>
 
@@ -144,13 +150,19 @@ class Router {
                             <input type="checkbox" value="HD" data-filter="quality"> HD
                         </label>
                         <label class="filter-checkbox">
-                            <input type="checkbox" value="Full HD" data-filter="quality"> Full HD
+                            <input type="checkbox" value="Full" data-filter="quality"> Full HD
                         </label>
                         <label class="filter-checkbox">
                             <input type="checkbox" value="CAM" data-filter="quality"> CAM
                         </label>
-                        <label class="filter-checkbox">
+                         <label class="filter-checkbox">
                             <input type="checkbox" value="Trailer" data-filter="quality"> Trailer
+                        </label>
+                         <label class="filter-checkbox">
+                            <input type="checkbox" value="Vietsub" data-filter="quality"> Vietsub
+                        </label>
+                         <label class="filter-checkbox">
+                            <input type="checkbox" value="Thuyết Minh" data-filter="quality"> Thuyết Minh
                         </label>
                     </div>
                 </div>
@@ -237,6 +249,7 @@ class Router {
     }
 
     // --- Rendering with Client-side Filter apply on Current Page Data ---
+    // --- Rendering with Client-side Filter apply on Current Page Data ---
     renderFilteredMovies(container) {
         if (!container) container = document.getElementById('filteredMovies');
         if (!container) return;
@@ -247,9 +260,18 @@ class Router {
         // 1. Client-side Filtering (on the 24 loaded items)
         if (types.length > 0) {
             displayMovies = displayMovies.filter(m => {
-                const slug = m.slug || '';
-                // Simple keyword check if 'type' field is missing in list API
-                return types.some(t => slug.includes(t) || (m.type || '').includes(t));
+                const type = (m.type || '').toLowerCase(); // API type: single, series, hoathinh, tvshows
+                const slug = (m.slug || '').toLowerCase();
+
+                return types.some(t => {
+                    if (t === type) return true;
+                    // Fallback for logic if API type is missing or vague
+                    if (t === 'hoathinh' && slug.includes('hoat-hinh')) return true;
+                    if (t === 'tvshows' && (slug.includes('tv-shows') || slug.includes('tvshow'))) return true;
+                    if (t === 'single' && type === 'single') return true;
+                    if (t === 'series' && type === 'series') return true;
+                    return false;
+                });
             });
         }
 
@@ -258,7 +280,11 @@ class Router {
                 const y = m.year;
                 if (!y) return false;
                 return years.some(cond => {
-                    if (cond.startsWith('<')) return y < parseInt(cond.substring(1));
+                    // Handle dynamic "Before X"
+                    if (String(cond).startsWith('<')) {
+                        const maxYear = parseInt(String(cond).substring(1));
+                        return y < maxYear;
+                    }
                     return y == cond;
                 });
             });
@@ -266,8 +292,14 @@ class Router {
 
         if (qualities.length > 0) {
             displayMovies = displayMovies.filter(m => {
-                const q = m.quality || '';
-                return qualities.some(ql => q.includes(ql));
+                const q = (m.quality || '').toLowerCase();
+                // Some API providers put Vietsub/Thuyết Minh in lang field
+                const lang = (m.lang || '').toLowerCase();
+
+                return qualities.some(ql => {
+                    const query = ql.toLowerCase();
+                    return q.includes(query) || lang.includes(query);
+                });
             });
         }
 
@@ -286,7 +318,7 @@ class Router {
             container.innerHTML = `
                 <div style="grid-column: 1/-1; text-align: center; padding: 40px; color: var(--text-secondary);">
                     <p>Không tìm thấy phim phù hợp trong trang này.</p>
-                    <p style="font-size: 0.9em; margin-top: 8px;">Hãy thử chuyển sang trang tiếp theo.</p>
+                    <p style="font-size: 0.9em; margin-top: 8px;">Hãy thử chuyển sang trang tiếp theo hoặc lọc ít điều kiện hơn.</p>
                 </div>
             `;
         } else {
@@ -295,7 +327,7 @@ class Router {
             });
         }
 
-        // Update Count (Show count of valid items in this page)
+        // Update Count
         const countElement = document.getElementById('movieCount');
         if (countElement) {
             countElement.textContent = `Trang ${this.currentData.currentPage}: ${displayMovies.length} phim`;
