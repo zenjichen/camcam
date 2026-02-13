@@ -741,7 +741,14 @@ const init = async () => {
     setupSearchSuggestions();
 };
 
-// Search Suggestions Setup
+// --- Search Suggestions & Infinite Scroll Logic ---
+let searchPage = 1;
+let isSearching = false;
+let currentSearchQuery = '';
+let hasMoreResults = true;
+const searchSuggestionsContainer = document.querySelector('.search-suggestions');
+
+// Setup Search Suggestions
 const setupSearchSuggestions = () => {
     const searchWrapper = document.querySelector('.search-box');
 
@@ -765,8 +772,15 @@ const setupSearchSuggestions = () => {
             return;
         }
 
+        // Reset state for new search
+        currentSearchQuery = query;
+        searchPage = 1;
+        hasMoreResults = true;
+        suggestionsContainer.innerHTML = ''; // Clear previous
+        suggestionsContainer.scrollTop = 0;
+
         debounceTimer = setTimeout(() => {
-            fetchSearchSuggestions(query);
+            fetchSearchSuggestions(query, 1);
         }, 300);
     });
 
@@ -776,11 +790,45 @@ const setupSearchSuggestions = () => {
             suggestionsContainer.classList.remove('active');
         }
     });
+
+    // Infinite Scroll Listener
+    suggestionsContainer.addEventListener('scroll', () => {
+        const { scrollTop, scrollHeight, clientHeight } = suggestionsContainer;
+
+        // Check if scrolled near bottom (within 20px)
+        if (scrollTop + clientHeight >= scrollHeight - 20) {
+            if (hasMoreResults && !isSearching) {
+                searchPage++;
+                fetchSearchSuggestions(currentSearchQuery, searchPage, true);
+            }
+        }
+    });
 };
 
-const fetchSearchSuggestions = async (query) => {
+const fetchSearchSuggestions = async (query, page = 1, append = false) => {
+    if (isSearching) return;
+    isSearching = true;
+
     try {
-        const data = await fetchAPI(API_ENDPOINTS.search, { keyword: query, limit: 5 });
+        // Show loading indicator if appending
+        if (append) {
+            const loader = document.createElement('div');
+            loader.className = 'suggestion-loader';
+            loader.innerText = 'Đang tải thêm...';
+            loader.style.padding = '10px';
+            loader.style.textAlign = 'center';
+            loader.style.color = '#888';
+            loader.style.fontSize = '12px';
+            document.querySelector('.search-suggestions').appendChild(loader);
+        }
+
+        const data = await fetchAPI(API_ENDPOINTS.search, { keyword: query, limit: 10, page: page });
+
+        isSearching = false;
+
+        // Remove loader
+        const loader = document.querySelector('.suggestion-loader');
+        if (loader) loader.remove();
 
         if (!data) return;
 
@@ -788,20 +836,42 @@ const fetchSearchSuggestions = async (query) => {
         if (data.items) movies = data.items;
         else if (data.data && data.data.items) movies = data.data.items;
 
-        renderSuggestions(movies);
+        if (movies.length === 0) {
+            hasMoreResults = false;
+            if (!append) {
+                // Show "No results" only if it's the first page
+                // renderSuggestions([]); // Handled in render
+            }
+            return;
+        }
+
+        // Check if we got fewer results than limit, implies no more pages
+        if (movies.length < 5) {
+            hasMoreResults = false;
+        }
+
+        renderSuggestions(movies, append);
     } catch (error) {
         console.error('Error fetching suggestions:', error);
+        isSearching = false;
+        const loader = document.querySelector('.suggestion-loader');
+        if (loader) loader.remove();
     }
 };
 
-const renderSuggestions = (movies) => {
+const renderSuggestions = (movies, append = false) => {
     const container = document.querySelector('.search-suggestions');
-    if (!movies || movies.length === 0) {
-        container.classList.remove('active');
-        return;
+
+    if (!append) {
+        // First load
+        if (!movies || movies.length === 0) {
+            container.classList.remove('active');
+            return;
+        }
+        container.innerHTML = ''; // Clear only if not appending
     }
 
-    container.innerHTML = movies.map(movie => {
+    const html = movies.map(movie => {
         let posterUrl = movie.poster_url || movie.thumb_url || 'https://via.placeholder.com/40x60';
         if (posterUrl && !posterUrl.startsWith('http')) {
             posterUrl = posterUrl.startsWith('/')
@@ -819,6 +889,14 @@ const renderSuggestions = (movies) => {
             </div>
         `;
     }).join('');
+
+    // If appending, append to innerHTML (efficient enough for small lists)
+    // Or better, insertAdjacentHTML
+    if (append) {
+        container.insertAdjacentHTML('beforeend', html);
+    } else {
+        container.innerHTML = html;
+    }
 
     container.classList.add('active');
 };

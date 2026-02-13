@@ -394,14 +394,27 @@ body {
 
 .hero-title {
     font-size: 56px;
-    font-weight: 800;
+    font-weight: 900;
     line-height: 1.1;
     margin-bottom: 16px;
-    background: linear-gradient(135deg, var(--text) 0%, var(--text-secondary) 100%);
+
+    /* Teen Gradient: Neon Pink -> Purple -> Blue */
+    background: linear-gradient(to right, #ff00cc 0%, #333399 100%);
     -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
     background-clip: text;
+
+    /* Transparent fill to show gradient */
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+
+    /* 3px Black Stroke */
+    -webkit-text-stroke: 3px black;
+
+    /* Strong Drop Shadow */
+    filter: drop-shadow(0 4px 0px rgba(0, 0, 0, 1));
+
     animation: fadeInUp 0.8s ease-out;
+    letter-spacing: -1px;
 }
 
 .hero-description {
@@ -480,7 +493,7 @@ body {
     background-size: 200% 100%;
     color: #1a1a1a;
     border: 2px solid #f4e5b1;
-    box-shadow: 
+    box-shadow:
         0 8px 25px rgba(212, 175, 55, 0.5),
         0 4px 12px rgba(0, 0, 0, 0.4),
         0 0 40px rgba(212, 175, 55, 0.3),
@@ -867,7 +880,7 @@ body {
         0 0 20px rgba(212, 175, 55, 0.15),
         inset 0 1px 0 rgba(255, 255, 255, 0.3);
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
-    
+
 }
 
 .episode-btn.available::before {
@@ -921,7 +934,9 @@ body {
     box-shadow:
         0 2px 10px rgba(160, 160, 160, 0.2),
         inset 0 1px 0 rgba(255, 255, 255, 0.2);
-}\r\n\r\n.player-container {
+}
+
+.player-container {
     position: relative;
     width: 100%;
     background: #000;
