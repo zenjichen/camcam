@@ -55,10 +55,10 @@ body {
 }
 
 .navbar.scrolled {
-    background: rgba(10, 10, 10, 0.8);
+    background: rgba(10, 10, 10, 0.85);
     box-shadow: var(--shadow);
-    backdrop-filter: blur(30px);
-    -webkit-backdrop-filter: blur(30px);
+    backdrop-filter: blur(50px);
+    -webkit-backdrop-filter: blur(50px);
 }
 
 .nav-content {
@@ -67,6 +67,19 @@ body {
     justify-content: space-between;
     height: 70px;
     gap: 32px;
+    transition: height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.navbar.scrolled .nav-content {
+    height: 60px;
+}
+
+.navbar.scrolled .logo {
+    transform: scale(0.9);
+}
+
+.navbar.scrolled .logo:hover {
+    transform: scale(1.0);
 }
 
 .logo {
