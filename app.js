@@ -198,6 +198,66 @@ const loadHeroMovie = async () => {
     // Set button actions
     elements.heroPlayBtn.onclick = () => showMovieDetail(movie.slug);
 
+    // Analyze image brightness for contrast
+    if (movie.poster_url || movie.thumb_url) {
+        let bgUrl = movie.poster_url || movie.thumb_url;
+        if (!bgUrl.startsWith('http')) {
+            bgUrl = bgUrl.startsWith('/')
+                ? `https://img.ophim.live${bgUrl}`
+                : `https://img.ophim.live/uploads/movies/${bgUrl}`;
+        }
+
+        analyzeImageBrightness(bgUrl).then(isLight => {
+            if (isLight) {
+                elements.heroSection.classList.add('light-mode');
+            } else {
+                elements.heroSection.classList.remove('light-mode');
+            }
+        });
+    }
+};
+
+// Analyze Image Brightness
+const analyzeImageBrightness = (imageSrc) => {
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.crossOrigin = "Anonymous";
+        img.src = imageSrc;
+        img.style.display = "none";
+
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0);
+
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const data = imageData.data;
+            let r, g, b, avg;
+            let colorSum = 0;
+
+            // Sample pixels (every 10th pixel for performance)
+            const step = 4 * 10;
+            let count = 0;
+
+            for (let i = 0; i < data.length; i += step) {
+                r = data[i];
+                g = data[i + 1];
+                b = data[i + 2];
+                avg = Math.floor((r + g + b) / 3);
+                colorSum += avg;
+                count++;
+            }
+
+            const brightness = Math.floor(colorSum / count);
+            resolve(brightness > 128); // Threshold for "light"
+        };
+
+        img.onerror = () => {
+            resolve(false); // Default to dark mode (light text) on error
+        };
+    });
 };
 
 // Show Movie Detail
